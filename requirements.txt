@@ -1,0 +1,13 @@
+npm
+python3-venv
+python3
+nvim
+fzf
+zsh
+zoxide
+yq
+jq
+git
+tmux
+bat
+ripgrep
