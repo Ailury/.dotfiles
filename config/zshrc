@@ -1,0 +1,36 @@
+XDG_CONFIG_HOME="$HOME/.config"
+XDG_DATA_HOME="$XDG_CONFIG_HOME/local/share"
+XDG_CACHE_HOME="$XDG_CONFIG_HOME/cache"
+EDITOR="nvim"
+VISUAL="nvim"
+ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+HISTFILE="$ZDOTDIR/.zhistory"    # History filepath
+HISTSIZE=25000
+HISTFILE=~/.zsh_history
+SAVEHIST=$HISTSIZE
+HISTDUP=erase
+setopt appendhistory
+setopt sharehistory
+setopt hist_ignore_space
+setopt hist_ignore_all_dups
+setopt hist_save_no_dups
+setopt hist_ignore_dups
+setopt hist_find_no_dups
+
+# Options
+setopt HIST_SAVE_NO_DUPS         # Do not write a duplicate event to the history file.
+setopt hist_ignore_spac
+
+source /home/m/.zsh/powerlevel10k/powerlevel10k.zsh-theme
+source /home/m/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /home/m/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+autoload -U compinit; compinit
+
+alias cd=z
+alias ls='ls --color'
+alias vim=nvim
+
+
+eval "$(fzf --zsh)"
+eval "$(zoxide init zsh)"
