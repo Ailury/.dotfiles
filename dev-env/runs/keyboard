@@ -2,32 +2,35 @@
 
 script_dir="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 
-if [ ! -f /usr/share/X11/xkb/symbols/real-prog-qwerty ]; then
-	echo "real-prog-qwerty doesn't exist, copying over"
-	sudo cp ./resources/real-prog-qwerty /usr/share/X11/xkb/symbols
+src_kbm=./resources/real-prog-no-qwerty
+dest_kbm=/usr/share/X11/xkb/symbols
+
+if [ ! -f /usr/share/X11/xkb/symbols/real-prog-qwerty ] || ! cmp -s $src_kbm $dest_kbm/real-prog-qwerty; then
+	echo "$src_kbm doesn't exist, copying over"
+	sudo cp $src_kbm $dest_kbm
 else
 	echo "real-prog exists"
 fi
 
 
-if grep -q "real-prog-qwerty" /usr/share/X11/xkb/rules/evdev.xml; then
-	echo "evdev.xml already has real-prog-qwerty layout definition"
+if grep -q "real-prog-no-qwerty" /usr/share/X11/xkb/rules/evdev.xml; then
+	echo "evdev.xml already has real-prog-no-qwerty layout definition"
 	exit 0
 fi
 
 qwerty_env="
 <layout>
       <configItem>
-        <name>real-prog-layout</name>
-        <shortDescription>epd</shortDescription>
-        <description>Qwerty English (US)</description>
+        <name>real-prog-layout-no</name>
+        <shortDescription>rpgno</shortDescription>
+        <description>Qwerty Norwegian (NO)</description>
       </configItem>
       <variantList>
 	<variant>
 	    <configItem>
-		<name>real-prog-qwerty</name>
-		<description>English (Real Programmers Qwerty)</description>
-		<vendor>https://github.com/renerocksai/real-prog-qwerty/tree/master</vendor>
+		<name>real-prog-no-qwerty</name>
+		<description>Norwegian (Real Programmers Qwerty)</description>
+		<vendor>Ailury</vendor>
 	    </configItem>
 	</variant>
       </variantList>
