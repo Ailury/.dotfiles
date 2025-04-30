@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Define the local fonts directory
+FONT_DIR="$HOME/.local/share/fonts"
+
+# Create the fonts directory if it doesn't exist
+mkdir -p "$FONT_DIR"
+
+# Navigate to a temporary directory
+TEMP_DIR=$(mktemp -d)
+cd "$TEMP_DIR"
+
+# Fetch the latest release tag from GitHub
+LATEST_TAG=$(curl -s https://api.github.com/repos/tonsky/FiraCode/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
+
+# Construct the download URL
+ZIP_URL="https://github.com/tonsky/FiraCode/releases/download/${LATEST_TAG}/Fira_Code_v${LATEST_TAG}.zip"
+
+# Download the latest release zip file
+echo "Downloading Fira Code ${LATEST_TAG}..."
+curl -L -o FiraCode.zip "$ZIP_URL"
+
+# Extract the zip file
+echo "Extracting Fira Code..."
+unzip -q FiraCode.zip
+
+# Find and copy .ttf files to the fonts directory
+find . -type f -name "*.ttf" -exec cp {} "$FONT_DIR/" \;
+
+# Update the font cache
+echo "Updating font cache..."
+fc-cache -f -v
+
+# Clean up
+cd ~
+rm -rf "$TEMP_DIR"
+
+echo "Fira Code ${LATEST_TAG} installed successfully in $FONT_DIR"
