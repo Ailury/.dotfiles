@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+script_dir="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
+
+if [ ! -f /usr/share/X11/xkb/symbols/real-prog-qwerty ]; then
+	echo "real-prog-qwerty doesn't exist, copying over"
+	sudo cp ./resources/real-prog-qwerty /usr/share/X11/xkb/symbols
+else
+	echo "real-prog exists"
+fi
+
+
+if grep -q "real-prog-qwerty" /usr/share/X11/xkb/rules/evdev.xml; then
+	echo "evdev.xml already has real-prog-qwerty layout definition"
+	exit 0
+fi
+
+qwerty_env="
+<layout>
+      <configItem>
+        <name>real-prog-layout</name>
+        <shortDescription>epd</shortDescription>
+        <description>Qwerty English (US)</description>
+      </configItem>
+      <variantList>
+	<variant>
+	    <configItem>
+		<name>real-prog-qwerty</name>
+		<description>English (Real Programmers Qwerty)</description>
+		<vendor>https://github.com/renerocksai/real-prog-qwerty/tree/master</vendor>
+	    </configItem>
+	</variant>
+      </variantList>
+</layout>
+"
+
+layout_list=$(cat /usr/share/X11/xkb/rules/evdev.xml | grep "<layoutList>" -n  | cut -f1 -d:)
+total_lines=$(cat /usr/share/X11/xkb/rules/evdev.xml | wc -l)
+tail_lines=$(($total_lines - $layout_list))
+
+up_to=$(cat /usr/share/X11/xkb/rules/evdev.xml | head -$layout_list)
+remaining=$(cat /usr/share/X11/xkb/rules/evdev.xml | tail -$tail_lines)
+
+msg="$up_to
+$qwerty_env
+$remaining
+"
+
+echo "keyboard: $msg"
+echo $msg | sudo tee /usr/share/X11/xkb/rules/evdev.xml
+echo "don't forget to log out to let these changes take effect"
