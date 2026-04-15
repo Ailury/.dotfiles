@@ -1,0 +1,48 @@
+---
+title: myApp
+description: Schema for configuration of myApp
+type:
+  required:
+    - kafka
+    - api_endpoint
+additionalProperties: false
+properties:
+  thread_count:
+    type: integer
+    description: How many threads to span for the processing
+  api_endpoint:
+    type: object
+    description: The API endpoint for the stats and diagnostics
+    required:
+      - hostname
+      - port
+    properties:
+      hostname:
+        type: string
+        description: The hostname to be used by the API endopoint
+      port:
+        type: integer
+        description: The port to be used by the API endopoint
+  kafka:
+    type: object
+    description: Configuration of the Kafka client
+    required:
+      - bootstrap_servers
+      - topics
+    additionalProperties: false
+    properties:
+      bootstrap_servers:
+        description: Bootstrap server list for Kafka
+        type: array
+        minItems: 1
+        items:
+          type: string
+      topics:
+        description: Kafka topics to consume from.
+        type: array
+        minItems: 1
+        items:
+          type: string
+      consumer_group:
+        description: Consumer group for myApp's Kafka consumer.
+        type: string

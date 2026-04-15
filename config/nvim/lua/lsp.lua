@@ -35,12 +35,10 @@ vim.lsp.config("lua_ls", {
 
 vim.lsp.enable({
   "bashls",
-  --  "biome",
+  "biome",
   "clangd",
   "docker_language_server",
   "docker_compose_language_service",
-  --  "eslint",
-  --  "gh_actions_ls",
   "gopls",
   "jsonls",
   "just",
@@ -48,9 +46,6 @@ vim.lsp.enable({
   "marksman",
   "ruff",
   --  "nixd",
-  --  "prismals",
   --  "rust_analyzer",
-  --  "tailwindcss",
-  --  "vtsls",
   "yamlls",
 })

@@ -6,7 +6,6 @@ VISUAL="nvim"
 ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 HISTFILE="$ZDOTDIR/.zhistory"    # History filepath
 HISTSIZE=25000
-HISTFILE=~/.zsh_history
 SAVEHIST=$HISTSIZE
 HISTDUP=erase
 setopt appendhistory
@@ -21,15 +20,16 @@ setopt hist_find_no_dups
 setopt HIST_SAVE_NO_DUPS         # Do not write a duplicate event to the history file.
 setopt hist_ignore_spac
 
-source /home/m/.zsh/powerlevel10k/powerlevel10k.zsh-theme
-source /home/m/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /home/m/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $ZDOTDIR/powerlevel10k/powerlevel10k.zsh-theme
+source $ZDOTDIR/zsh-autosuggestions/zsh-autosuggestions.zsh
+source $ZDORDIR/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 autoload -U compinit; compinit
 
 alias cd=z
 alias ls='ls --color'
-alias vim=nvim
+alias vim='nvim'
+alias v='nvim'
 
 
 eval "$(fzf --zsh)"

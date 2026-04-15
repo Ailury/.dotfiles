@@ -85,6 +85,7 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
     lint.linters_by_ft = {
       dockerfile = { "hadolint" },
       fish = { "fish" },
+      yaml = { "yamllint" },
       go = { "golangcilint" },
       markdown = { "markdownlint-cli2" },
       ["markdown.mdx"] = { "markdownlint-cli2" },

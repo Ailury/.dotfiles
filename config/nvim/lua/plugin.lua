@@ -18,7 +18,24 @@ vim.keymap.set("n", "<c-l>", "<cmd>NvimTmuxNavigateRight<cr>", { desc = "Navigat
 local conform = require("conform")
 
 conform.setup({
+  formatters = {
+    yamlfmt = {
+      inherit = false,
+      command = "yamlfmt",
+      args = {
+        "-formatter",
+        "include_document_start=true",
+        "-",
+      },
+      stdin = true,
+    },
+  },
+
   formatters_by_ft = {
+    yaml = { "yamlfmt" },
+    ["yaml.docker-compose"] = { "yamlfmt" },
+    ["yaml.gitlab"] = { "yamlfmt" },
+    ["yaml.helm-values"] = { "yamlfmt" },
     sh = { "shfmt" },
     json = { "biome", "prettierd", stop_after_first = true },
     jsonc = { "biome", "prettierd", stop_after_first = true },
@@ -28,6 +45,7 @@ conform.setup({
     go = { "goimports", "gofumpt" },
     just = { "just" },
     lua = { "stylua" },
+    yaml = { "yamlfmt", "prettierd", stop_after_first = true },
     -- nix = { "nixfmt" },
   },
   format_on_save = {
