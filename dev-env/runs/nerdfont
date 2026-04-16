@@ -1,0 +1,379 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FONT_SLUG="JetBrainsMono"
+FONT_FAMILY="JetBrainsMono Nerd Font Mono"
+INSTALL_DIR_LINUX="${HOME}/.local/share/fonts/${FONT_SLUG}Nerd"
+INSTALL_DIR_MAC="${HOME}/Library/Fonts/${FONT_SLUG}Nerd"
+TERMINAL="none"
+FONT_SIZE="12"
+DRY_RUN="0"
+WORKDIR=""
+
+usage() {
+  cat <<USAGE
+Install JetBrainsMono Nerd Font Mono and optionally configure a terminal.
+
+Usage:
+  $0 [--terminal kitty|ghostty|alacritty|xfce4-terminal|xfce|none] [--font-size 12] [--dry-run]
+
+Examples:
+  $0
+  $0 --terminal xfce4-terminal
+  $0 --terminal kitty --font-size 13
+USAGE
+}
+
+log() { printf '\033[1;34m==>\033[0m %s\n' "$*" >&2; }
+warn() { printf '\033[1;33m==>\033[0m %s\n' "$*" >&2; }
+err() { printf '\033[1;31m==>\033[0m %s\n' "$*" >&2; }
+
+die() {
+  err "$*"
+  exit 1
+}
+
+cleanup() {
+  if [[ -n "${WORKDIR:-}" && -d "${WORKDIR:-}" ]]; then
+    rm -rf "$WORKDIR"
+  fi
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
+}
+
+backup_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  local backup="${file}.bak.$(date +%Y%m%d%H%M%S)"
+  cp "$file" "$backup"
+  log "Backed up $file -> $backup"
+}
+
+replace_or_append_line() {
+  local file="$1"
+  local regex="$2"
+  local newline="$3"
+
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+
+  if grep -Eq "$regex" "$file"; then
+    python3 - "$file" "$regex" "$newline" <<'PY'
+import re, sys
+path, pattern, newline = sys.argv[1:4]
+text = open(path, 'r', encoding='utf-8').read()
+new_text, count = re.subn(pattern, newline, text, count=1, flags=re.MULTILINE)
+if count == 0:
+    if text and not text.endswith('\n'):
+        text += '\n'
+    new_text = text + newline + '\n'
+open(path, 'w', encoding='utf-8').write(new_text)
+PY
+  else
+    printf '\n%s\n' "$newline" >> "$file"
+  fi
+}
+
+ensure_ini_section() {
+  local file="$1"
+  local section="$2"
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  if ! grep -Fq "[$section]" "$file"; then
+    printf '\n[%s]\n' "$section" >> "$file"
+  fi
+}
+
+replace_or_append_ini_key() {
+  local file="$1"
+  local section="$2"
+  local key="$3"
+  local value="$4"
+
+  ensure_ini_section "$file" "$section"
+
+  python3 - "$file" "$section" "$key" "$value" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+section = sys.argv[2]
+key = sys.argv[3]
+value = sys.argv[4]
+text = path.read_text(encoding='utf-8') if path.exists() else ''
+lines = text.splitlines()
+out = []
+in_section = False
+section_found = False
+key_written = False
+
+for i, line in enumerate(lines):
+    stripped = line.strip()
+    if stripped.startswith('[') and stripped.endswith(']'):
+        if in_section and not key_written:
+            out.append(f"{key}={value}")
+            key_written = True
+        in_section = stripped[1:-1] == section
+        if in_section:
+            section_found = True
+        out.append(line)
+        continue
+
+    if in_section and stripped.startswith(f"{key}="):
+        if not key_written:
+            out.append(f"{key}={value}")
+            key_written = True
+        continue
+
+    out.append(line)
+
+if not section_found:
+    if out and out[-1] != '':
+        out.append('')
+    out.append(f"[{section}]")
+    out.append(f"{key}={value}")
+elif in_section and not key_written:
+    out.append(f"{key}={value}")
+
+path.write_text("\n".join(out).rstrip("\n") + "\n", encoding='utf-8')
+PY
+}
+
+xfconf_set() {
+  local channel="$1"
+  local prop="$2"
+  local type="$3"
+  local value="$4"
+
+  if xfconf-query -c "$channel" -p "$prop" >/dev/null 2>&1; then
+    xfconf-query -c "$channel" -p "$prop" -s "$value" >/dev/null
+  else
+    xfconf-query -c "$channel" -p "$prop" --create -t "$type" -s "$value" >/dev/null
+  fi
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --terminal)
+        [[ $# -ge 2 ]] || die "--terminal requires a value"
+        TERMINAL="$2"
+        shift 2
+        ;;
+      --font-size)
+        [[ $# -ge 2 ]] || die "--font-size requires a value"
+        FONT_SIZE="$2"
+        shift 2
+        ;;
+      --dry-run)
+        DRY_RUN="1"
+        shift
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        die "Unknown argument: $1"
+        ;;
+    esac
+  done
+
+  case "$TERMINAL" in
+    kitty|ghostty|alacritty|xfce4-terminal|xfce|none) ;;
+    *) die "Unsupported terminal: $TERMINAL" ;;
+  esac
+}
+
+download_font_archive() {
+  local workdir="$1"
+  local zip_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${FONT_SLUG}.zip"
+  local txz_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${FONT_SLUG}.tar.xz"
+
+  if curl -fsLI "$zip_url" >/dev/null 2>&1; then
+    log "Downloading ${FONT_SLUG} Nerd Font archive"
+    curl -fL "$zip_url" -o "$workdir/${FONT_SLUG}.zip"
+    printf '%s\n' "$workdir/${FONT_SLUG}.zip"
+    return 0
+  fi
+
+  if curl -fsLI "$txz_url" >/dev/null 2>&1; then
+    log "Downloading ${FONT_SLUG} Nerd Font archive"
+    curl -fL "$txz_url" -o "$workdir/${FONT_SLUG}.tar.xz"
+    printf '%s\n' "$workdir/${FONT_SLUG}.tar.xz"
+    return 0
+  fi
+
+  die "Could not locate a downloadable archive for ${FONT_SLUG} from the latest Nerd Fonts release"
+}
+
+extract_archive() {
+  local archive="$1"
+  local outdir="$2"
+  mkdir -p "$outdir"
+
+  case "$archive" in
+    *.zip)
+      need_cmd unzip
+      unzip -q "$archive" -d "$outdir"
+      ;;
+    *.tar.xz)
+      need_cmd tar
+      tar -xJf "$archive" -C "$outdir"
+      ;;
+    *)
+      die "Unsupported archive format: $archive"
+      ;;
+  esac
+}
+
+install_fonts() {
+  local extract_dir="$1"
+  local target_dir
+  case "$(uname -s)" in
+    Linux) target_dir="$INSTALL_DIR_LINUX" ;;
+    Darwin) target_dir="$INSTALL_DIR_MAC" ;;
+    *) die "Unsupported OS: $(uname -s)" ;;
+  esac
+
+  mkdir -p "$target_dir"
+  find "$extract_dir" -type f \( -iname '*.ttf' -o -iname '*.otf' \) -exec cp -f {} "$target_dir" \;
+
+  case "$(uname -s)" in
+    Linux)
+      if command -v fc-cache >/dev/null 2>&1; then
+        fc-cache -f "$target_dir" >/dev/null
+      else
+        warn "fc-cache not found; font may not appear until your next login"
+      fi
+      ;;
+  esac
+
+  printf '%s\n' "$target_dir"
+}
+
+configure_kitty() {
+  local file="${HOME}/.config/kitty/kitty.conf"
+  backup_file "$file"
+  replace_or_append_line "$file" '^[[:space:]]*font_family[[:space:]]+.*$' "font_family ${FONT_FAMILY}"
+  replace_or_append_line "$file" '^[[:space:]]*font_size[[:space:]]+.*$' "font_size ${FONT_SIZE}.0"
+  log "Configured kitty: $file"
+}
+
+configure_ghostty() {
+  local file="${HOME}/.config/ghostty/config"
+  backup_file "$file"
+  replace_or_append_line "$file" '^[[:space:]]*font-family[[:space:]]*=.*$' "font-family = \"${FONT_FAMILY}\""
+  replace_or_append_line "$file" '^[[:space:]]*font-size[[:space:]]*=.*$' "font-size = ${FONT_SIZE}"
+  log "Configured Ghostty: $file"
+}
+
+configure_alacritty() {
+  local file="${HOME}/.config/alacritty/alacritty.toml"
+  backup_file "$file"
+  python3 - "$file" "$FONT_FAMILY" "$FONT_SIZE" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+family = sys.argv[2]
+size = sys.argv[3]
+text = path.read_text(encoding='utf-8') if path.exists() else ''
+marker = '# managed-by-install-jetbrainsmono-nerd-font'
+block = f'''{marker}
+[font]
+normal = {{ family = "{family}", style = "Regular" }}
+size = {size}.0
+'''
+if marker in text:
+    text = re.sub(re.escape(marker) + r'.*?(?=\n\[|\Z)', block.rstrip('\n'), text, count=1, flags=re.S)
+else:
+    if text and not text.endswith('\n'):
+        text += '\n'
+    text += '\n' + block
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(text, encoding='utf-8')
+PY
+  log "Configured Alacritty: $file"
+  warn "If you already define a [font] table elsewhere in alacritty.toml, remove the older one to avoid duplicate settings"
+}
+
+configure_xfce_terminal() {
+  local font_spec="${FONT_FAMILY} ${FONT_SIZE}"
+
+  if command -v xfconf-query >/dev/null 2>&1; then
+    xfconf_set "xfce4-terminal" "/font-use-system" bool false
+    xfconf_set "xfce4-terminal" "/font-name" string "$font_spec"
+    log "Configured xfce4-terminal via xfconf-query"
+    return 0
+  fi
+
+  local file="${HOME}/.config/xfce4/terminal/terminalrc"
+  backup_file "$file"
+  replace_or_append_ini_key "$file" "Configuration" "FontUseSystem" "FALSE"
+  replace_or_append_ini_key "$file" "Configuration" "FontName" "$font_spec"
+  log "Configured xfce4-terminal via terminalrc fallback: $file"
+}
+
+maybe_configure_terminal() {
+  case "$TERMINAL" in
+    kitty) configure_kitty ;;
+    ghostty) configure_ghostty ;;
+    alacritty) configure_alacritty ;;
+    xfce4-terminal|xfce) configure_xfce_terminal ;;
+    none) ;;
+  esac
+}
+
+post_install_notes() {
+  cat <<NOTES
+
+Installed font family:
+  ${FONT_FAMILY}
+
+Verify:
+  fc-list | grep -i 'JetBrainsMono Nerd Font Mono'    # Linux
+
+If icons still look broken:
+  1. Fully restart your terminal.
+  2. Restart Neovim.
+  3. Check the exact family name available on your system:
+       fc-list : family | grep -i 'JetBrainsMono'
+
+Recommended terminal font settings:
+  Kitty:         font_family ${FONT_FAMILY}
+  Ghostty:       font-family = "${FONT_FAMILY}"
+  Alacritty:     normal = { family = "${FONT_FAMILY}", style = "Regular" }
+  XFCE Terminal: ${FONT_FAMILY} ${FONT_SIZE}
+NOTES
+}
+
+main() {
+  parse_args "$@"
+  need_cmd curl
+  need_cmd mktemp
+  need_cmd python3
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "Dry run only. Terminal target: $TERMINAL, font size: $FONT_SIZE"
+    exit 0
+  fi
+
+  WORKDIR="$(mktemp -d)"
+  trap cleanup EXIT
+
+  local archive extract_dir install_dir
+  archive="$(download_font_archive "$WORKDIR")"
+  extract_dir="$WORKDIR/extracted"
+  extract_archive "$archive" "$extract_dir"
+  install_dir="$(install_fonts "$extract_dir")"
+  log "Installed fonts into: $install_dir"
+
+  maybe_configure_terminal
+  post_install_notes
+}
+
+main "$@"
