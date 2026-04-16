@@ -1,7 +1,5 @@
 require("base16-pro-max").setup({
-  colors = require("base16-pro-max.parser").get_base16_colors(
-    "~/.config/nvim/colorscheme/base16.yml"
-  ),
+  colors = require("base16-pro-max.parser").get_base16_colors("~/.config/nvim/colorscheme/base16.yml"),
   styles = {
     italic = true,
     bold = true,

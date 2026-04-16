@@ -12,6 +12,49 @@ vim.keymap.set("n", "<c-k>", "<cmd>NvimTmuxNavigateUp<cr>", { desc = "Navigate u
 vim.keymap.set("n", "<c-l>", "<cmd>NvimTmuxNavigateRight<cr>", { desc = "Navigate right" })
 
 -- =========================================================
+--  Indentation
+-- =========================================================
+
+local indentscope = require("mini.indentscope")
+
+indentscope.setup({
+  symbol = "▎", -- more visible than │, but still subtle
+  draw = {
+    delay = 0,
+    animation = indentscope.gen_animation.none(),
+    priority = 10,
+  },
+  options = {
+    indent_at_cursor = true,
+    try_as_border = true,
+  },
+})
+
+local function set_indentscope_hl()
+  local function get_fg(name, fallback)
+    local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
+    return (ok and hl and hl.fg) or fallback
+  end
+
+  vim.api.nvim_set_hl(0, "MiniIndentscopeSymbol", {
+    fg = get_fg("Special", "#89b4fa"),
+    bold = true,
+    nocombine = true,
+  })
+
+  vim.api.nvim_set_hl(0, "MiniIndentscopeSymbolOff", {
+    fg = get_fg("Comment", "#6c7086"),
+    nocombine = true,
+  })
+end
+
+set_indentscope_hl()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_indentscope_hl,
+})
+
+-- =========================================================
 --  Formatting
 -- =========================================================
 
@@ -78,7 +121,7 @@ nvim_treesitter.install({
   "css",
   "dockerfile",
   "gitattributes",
-  "gitcommit",
+  --  "gitcommit",
   "git_config",
   "gitignore",
   "git_rebase",

@@ -2,6 +2,7 @@ if vim.loader then
   vim.loader.enable()
 end
 
+require("offline")
 require("pack")
 require("colorscheme")
 require("option")

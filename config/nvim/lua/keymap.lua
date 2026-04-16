@@ -1,4 +1,49 @@
 -- =========================================================
+--  Toggles
+-- =========================================================
+
+vim.keymap.set("n", "<leader>u", vim.cmd.Undotree, { desc = "Toggle Undotree" })
+
+vim.keymap.set("n", "<leader>td", function()
+  local enabled = vim.diagnostic.is_enabled({ bufnr = 0 })
+  vim.diagnostic.enable(not enabled, { bufnr = 0 })
+end, { desc = "Toggle diagnostics" })
+
+local MiniIndentscope = require("mini.indentscope")
+
+vim.keymap.set("n", "<leader>ti", function()
+  vim.b.miniindentscope_disable = not vim.b.miniindentscope_disable
+
+  if vim.b.miniindentscope_disable then
+    MiniIndentscope.undraw()
+  else
+    MiniIndentscope.draw()
+  end
+end, { desc = "Toggle indent scope" })
+
+local function indent_pattern(bufnr)
+  local sw = vim.bo[bufnr].shiftwidth
+  if sw == 0 then
+    sw = vim.bo[bufnr].tabstop
+  end
+  return "│" .. string.rep(" ", math.max(sw - 1, 0))
+end
+
+vim.keymap.set("n", "<leader>tw", function()
+  vim.wo.list = not vim.wo.list
+
+  if vim.wo.list then
+    local lcs = vim.opt_local.listchars:get()
+    local pat = indent_pattern(0)
+    lcs.leadmultispace = pat
+    lcs.multispace = pat
+    lcs.trail = "·"
+    lcs.nbsp = "␣"
+    vim.opt_local.listchars = lcs
+  end
+end, { desc = "Toggle whitespace guides" })
+
+-- =========================================================
 --  Movement enhancements
 -- =========================================================
 

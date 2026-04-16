@@ -174,6 +174,17 @@ vim.api.nvim_create_autocmd("VimResized", {
 })
 
 -- =========================================================
+--  Disable indent shown on files
+-- =========================================================
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "help", "markdown", "text" },
+  callback = function(args)
+    vim.b[args.buf].miniindentscope_disable = true
+  end,
+})
+
+-- =========================================================
 --  Move help to the right split
 -- =========================================================
 

@@ -1,10 +1,14 @@
 ---
 title: myApp
 description: Schema for configuration of myApp
-type:
-  required:
-    - kafka
-    - api_endpoint
+desc: nah
+pog: ty
+what-theheck: ts
+taht: test
+type: object
+required:
+  - kafka
+  - api_endpoint
 additionalProperties: false
 properties:
   thread_count:
